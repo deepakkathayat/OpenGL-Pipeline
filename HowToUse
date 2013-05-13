@@ -1,7 +1,4 @@
-
--> sgl.h is the Header File
+-> sgl.h is the Header File, include it in your main source code
+-> A sample main file is included. The makefile compiles the code. Type 'make' on the terminal
+-> Now type './main' (on terminal) to run the executable
 -> sglShow() creates a ply file for the triangles
-
--> How to run:
-->> The makefile compiles the code. Type 'make' on the terminal
-->> Now type './main' (on terminal) to run the executable
