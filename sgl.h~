@@ -1,0 +1,410 @@
+/*
+ Header file : sgl.h
+ Author : Deepak Kathayat
+*/
+
+#ifndef SGL_H
+#define SGL_H
+
+#include <iostream>
+#include <utility>
+#include <vector>
+#include <algorithm>
+#include <functional>
+#include <cmath>
+#include <cstdio>
+#include <stack>
+#include <fstream>
+#include <GL/glut.h>
+using namespace std;
+
+#define PI 3.141592653589
+#define DEG2RAD(deg) (deg * PI / 180)
+#define SGL_TRIANGLES 1
+//defining 4x4 Matrix
+typedef GLfloat Matrix [4][4];
+
+//defining model stack
+struct A{
+	GLfloat M[4][4];
+};
+
+//defining triangle structure
+struct B{
+	GLfloat v1[3],v2[3],v3[3];
+	int a,b,c;
+};
+
+//defining color structure
+struct C{
+	GLfloat color[3];
+};
+
+A S[100];
+B T[100];
+C Clr[100];
+int SPtr = -1;
+int CIndex = 0;
+int TPtr = -1;
+int V = -1;
+int FLAG=0;
+//declaring model matrix
+Matrix model_matrix;
+//declaring view matrix
+Matrix view_matrix;
+//declaring projection matrix
+Matrix proj_matrix;
+//declaring viewport matrix
+Matrix viewport_matrix;
+
+//sgl functions
+void sglSetIdentity(Matrix m){
+	GLint row,col;
+
+	for(row=0;row<4;row++){
+		for(col=0;col<4;col++){
+			m[row][col] = (row == col);
+		}
+	}
+}
+void sglModLoadIdentity(){
+	sglSetIdentity(model_matrix);
+}
+void sglModMatrix(GLfloat mat[]){
+	int i;
+	for(i=0;i<16;i++){
+		model_matrix[(i%4)][(i/4)] = mat[i];
+	}
+}
+void sglModPushMatrix(){
+	SPtr++;
+	int row,col;
+	for(row=0;row<4;row++){
+		for(col=0;col<4;col++){
+			S[SPtr].M[row][col] = model_matrix[row][col];
+		}
+	}
+}
+void sglModPopMatrix(){
+	int row,col;
+	for(row=0;row<4;row++){
+		for(col=0;col<4;col++){
+			model_matrix[row][col] = S[SPtr].M[row][col];
+		}
+	}
+	SPtr--;
+}
+void matrixPreMultiply(Matrix m1, Matrix m2){
+	GLint row,col;
+	Matrix matTemp;
+
+	for(row=0;row<4;row++){
+		for(col=0;col<4;col++){
+			matTemp [row][col] = m1[row][0] * m2[0][col] + m1[row][1]* m2[1][col] + m1[row][2]*m2[2][col] + m1[row][3]* m2[3][col];
+		}
+	}
+	for(row=0;row<4;row++){
+		for(col=0;col<4;col++){
+			m1[row][col] = matTemp[row][col];
+		}
+	}
+}
+void sglModTranslate(GLfloat tx,GLfloat ty,GLfloat tz){
+	Matrix matTrans;
+	sglSetIdentity(matTrans);
+
+	matTrans[0][3] = tx;
+	matTrans[1][3] = ty;
+	matTrans[2][3] = tz;
+	matrixPreMultiply(model_matrix,matTrans);
+}
+
+void sglModRotate(GLfloat radianAngle,GLfloat vx,GLfloat vy,GLfloat vz){
+
+	Matrix matQuatRot;
+	float axisVectLength = sqrt( (vx) * (vx)  + (vy) * (vy) +  (vz)*(vz) );
+	float cosA = cosf(radianAngle);
+	float oneC = 1 - cosA;
+	float sinA = sinf (radianAngle);
+	float ux = vx / axisVectLength;
+	float uy = vy / axisVectLength;
+	float uz = vz / axisVectLength;
+
+	sglSetIdentity(matQuatRot);
+
+	matQuatRot [0][0] = ux*ux*oneC + cosA;
+	matQuatRot [0][1] = ux*uy*oneC - uz*sinA;
+	matQuatRot [0][2] = ux*uz*oneC + uy*sinA;
+	matQuatRot [1][0] = uy*ux*oneC + uz*sinA;
+	matQuatRot [1][1] = uy*uy*oneC + cosA;
+	matQuatRot [1][2] = uy*uz*oneC - ux*sinA;
+	matQuatRot [2][0] = uz*ux*oneC - uy*sinA;
+	matQuatRot [2][1] = uz*uy*oneC + ux*sinA;
+	matQuatRot [2][2] = uz*uz*oneC + cosA;
+
+	matrixPreMultiply(model_matrix,matQuatRot);
+}
+
+void sglModScale(GLfloat sx, GLfloat sy, GLfloat sz){
+
+	Matrix matScale;
+	sglSetIdentity(matScale);
+	matScale [0][0] = sx;
+	matScale [1][1] = sy;
+	matScale [2][2] = sz;
+
+	matrixPreMultiply(model_matrix,matScale);
+}
+
+void sglViewLoadIdentity(){
+	sglSetIdentity(view_matrix);
+}
+void sglViewMatrix(GLfloat mat[]){
+	int i;
+	for(i=0;i<16;i++){
+		view_matrix[(i%4)][(i/4)] = mat[i];
+	}
+}
+void sglViewTranslate(GLfloat tx,GLfloat ty,GLfloat tz){
+	Matrix matTrans;
+	sglSetIdentity(matTrans);
+
+	matTrans[0][3] = tx;
+	matTrans[1][3] = ty;
+	matTrans[2][3] = tz;
+	matrixPreMultiply(view_matrix,matTrans);
+}
+
+void sglViewRotate(GLfloat radianAngle,GLfloat vx,GLfloat vy,GLfloat vz){
+
+	Matrix matQuatRot;
+	float axisVectLength = sqrt( (vx) * (vx)  + (vy) * (vy) +  (vz)*(vz) );
+	float cosA = cosf(radianAngle);
+	float oneC = 1 - cosA;
+	float sinA = sinf (radianAngle);
+	float ux = vx / axisVectLength;
+	float uy = vy / axisVectLength;
+	float uz = vz / axisVectLength;
+
+	sglSetIdentity(matQuatRot);
+
+	matQuatRot [0][0] = ux*ux*oneC + cosA;
+	matQuatRot [0][1] = ux*uy*oneC - uz*sinA;
+	matQuatRot [0][2] = ux*uz*oneC + uy*sinA;
+	matQuatRot [1][0] = uy*ux*oneC + uz*sinA;
+	matQuatRot [1][1] = uy*uy*oneC + cosA;
+	matQuatRot [1][2] = uy*uz*oneC - ux*sinA;
+	matQuatRot [2][0] = uz*ux*oneC - uy*sinA;
+	matQuatRot [2][1] = uz*uy*oneC + ux*sinA;
+	matQuatRot [2][2] = uz*uz*oneC + cosA;
+
+	matrixPreMultiply(view_matrix,matQuatRot);
+}
+
+void crossProduct(GLfloat *a, GLfloat *x, GLfloat *y){
+    a[0] = x[1]*y[2] - x[2]*y[1];
+    a[1] = x[2]*y[0] - x[0]*y[2];
+    a[2] = x[0]*y[1] - x[1]*y[0];
+    return;
+}
+
+void sglLookAt(GLfloat cx, GLfloat cy,GLfloat cz, GLfloat lx, GLfloat ly, GLfloat lz, GLfloat upx, GLfloat upy, GLfloat upz){
+	GLfloat n[3],u[3],v[3],up[3],ctr[3];
+	GLfloat r;
+	Matrix matTemp;
+	
+	ctr[0] = cx;
+	ctr[1] = cy;
+	ctr[2] = cz;
+
+	r = sqrt(lx*lx + ly*ly + lz*lz);
+	n[0] = -lx/r;
+	n[1] = -ly/r;
+	n[2] = -lz/r;
+
+	r = sqrt(upx*upx + upy*upy + upz*upz);
+	up[0] = upx/r;
+	up[1] = upy/r;
+	up[2] = upz/r;
+
+	crossProduct(u,up,n);
+	
+	r = sqrt(u[0]*u[0] + u[1]*u[1] + u[2]*u[2]);
+	u[0] /= r;
+	u[1] /= r;
+	u[2] /= r;
+    
+	crossProduct(v,n,u);
+    for(int i=0;i<3;i++){
+        matTemp[i][0] = u[i];
+        matTemp[i][1] = v[i];
+        matTemp[i][2] = n[i];
+        matTemp[i][3] = ctr[i];
+    }
+    matTemp[3][3] = 1;
+	matrixPreMultiply(view_matrix,matTemp);
+}
+
+void sglProjOrtho(GLfloat left, GLfloat right,GLfloat bottom, GLfloat top,GLfloat near,GLfloat far){
+	sglSetIdentity(proj_matrix);
+	proj_matrix [0][0] = (GLfloat)2/(right-left);
+	proj_matrix [1][1] = (GLfloat)2/(top-bottom);
+	proj_matrix [2][2] = (GLfloat)-2/(far-near);
+	
+	float tx = - (right+left) / (right-left);
+	float ty = - (top+bottom) / (top-bottom);
+	float tz = - (far+near) / (far-near);
+
+	proj_matrix [0][3] = tx;
+	proj_matrix [1][3] = ty;
+	proj_matrix [2][3] = tz;
+}
+void sglProjFrustum(GLfloat left,GLfloat right,GLfloat bottom,GLfloat top,GLfloat near,GLfloat far){
+	sglSetIdentity(proj_matrix);
+	proj_matrix [0][0] = (GLfloat)(2*near)/(right-left);
+	proj_matrix [1][1] = (GLfloat)(2*near)/(top-bottom);
+	
+	float A = (right+left) / (right-left);
+	float B = (top+bottom) / (top-bottom);
+	float C = - (far+near) / (far-near);
+	float D = - (2*far*near) / (far-near);
+
+	proj_matrix [2][2] = (GLfloat)-2/(far-near);
+	proj_matrix [0][2] = A;
+	proj_matrix [1][2] = B;
+	proj_matrix [2][2] = C;
+	proj_matrix [2][3] = D;
+	proj_matrix [3][2] = -1;
+	proj_matrix [3][3] = 0;
+}
+
+void sgluPerspective( float fovY, float aspect, float zNear, float zFar ){
+	float fW, fH;
+	fH = tan( (fovY / 2) / 180 * PI ) * zNear;
+	fW = fH * aspect;
+	sglProjFrustum( -fW, fW, -fH, fH, zNear, zFar );
+}
+
+void sglViewport(GLfloat llx, GLfloat lly, GLfloat urx, GLfloat ury) {
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            viewport_matrix[i][j] = 0;
+    viewport_matrix[3][3] = viewport_matrix[2][2] = 1;
+    viewport_matrix[0][0] = (urx-llx)/2.0;
+    viewport_matrix[1][1] = (ury-lly)/2.0;
+    viewport_matrix[0][3] = (urx+llx)/2.0;
+    viewport_matrix[1][3] = (ury+lly)/2.0;
+}
+
+void print(Matrix mat){
+	for(int i=0;i<4;i++){
+		for(int j=0;j<4;j++)
+			printf("%f ",mat[j][i]);
+	}
+	printf("\n");
+}
+void glprint_mv(){
+	GLfloat matrix[16]; 
+
+	glGetFloatv (GL_MODELVIEW_MATRIX, matrix);
+	for(int i=0;i<16;i++)
+		printf("%f ",matrix[i]);
+	printf("\n");
+}
+
+void sglBegin(GLint F){
+	if(F){
+		FLAG=1;
+		matrixPreMultiply(view_matrix,model_matrix);
+		matrixPreMultiply(proj_matrix,view_matrix);
+		matrixPreMultiply(viewport_matrix,proj_matrix);
+		TPtr = -1;
+		V = -1;
+	}
+}
+void sglEnd(){
+	FLAG=0;
+}
+void sglVertex(GLfloat x, GLfloat y, GLfloat z){
+	V++;
+	if(V%3==0)
+		TPtr++;
+	float X = viewport_matrix[0][0] * x + viewport_matrix[0][1] * y + viewport_matrix[0][2] * z + viewport_matrix[0][3];
+	float Y = viewport_matrix[1][0] * x + viewport_matrix[1][1] * y + viewport_matrix[1][2] * z + viewport_matrix[1][3];
+	float Z = viewport_matrix[2][0] * x + viewport_matrix[2][1] * y + viewport_matrix[2][2] * z + viewport_matrix[2][3];
+	float W = viewport_matrix[3][0] * x + viewport_matrix[3][1] * y + viewport_matrix[3][2] * z + viewport_matrix[3][3];
+	if(V%3==0){
+		T[TPtr].v1[0] = X/W;
+		T[TPtr].v1[1] = Y/W;
+		T[TPtr].v1[2] = Z/W;
+		T[TPtr].a = 1;
+	}
+	else if(V%3==1){
+		T[TPtr].v2[0] = X/W;
+		T[TPtr].v2[1] = Y/W;
+		T[TPtr].v2[2] = Z/W;
+		T[TPtr].b = 1;
+	}
+	else if(V%3==2){
+		T[TPtr].v3[0] = X/W;
+		T[TPtr].v3[1] = Y/W;
+		T[TPtr].v3[2] = Z/W;
+		T[TPtr].c = 1;
+	}
+}
+void sglColour(GLfloat x, GLfloat y, GLfloat z){
+	Clr[CIndex].color[0] = x;
+	Clr[CIndex].color[1] = y;
+	Clr[CIndex].color[2] = z;
+	CIndex++;
+}
+
+void sglClear(GLfloat r,GLfloat g,GLfloat b){
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(r, g, b, 1);
+	for(int i=0;i<CIndex;i++){
+		Clr[i].color[0] = r;
+		Clr[i].color[1] = g;
+		Clr[i].color[2] = b;
+	}
+	CIndex = 0;
+}
+void sglShow(){
+		int size = TPtr;
+		ofstream myfile;
+		myfile.open("triangle.ply");
+		myfile << "ply\n";
+		myfile << "format ascii 1.0\n";
+		myfile << "comment made by Deepak Kathayat\n";
+		myfile << "comment this file is a Triangle\n";
+		myfile << "element vertex " << (size+1)*3 << "\n";
+		myfile << "property float x\n";
+		myfile << "property float y\n";
+		myfile << "property float z\n";
+		myfile << "property uchar red\n";
+		myfile << "property uchar green\n";
+		myfile << "property uchar blue\n";
+		myfile << "element face 0\n";
+		myfile << "property list float vertex_indices\n";
+		myfile << "end_header\n";
+		
+		for(int i=0;i<=size;i++){
+			if(T[i].a && T[i].b && T[i].c){
+				glBegin(GL_TRIANGLES);
+				glColor3f(Clr[i*3].color[0],Clr[i*3].color[1],Clr[i*3].color[2]);
+				glVertex3f(T[i].v1[0],T[i].v1[1],T[i].v1[2]);
+				glColor3f(Clr[i*3+1].color[0],Clr[i*3+1].color[1],Clr[i*3+1].color[2]);
+				glVertex3f(T[i].v2[0],T[i].v2[1],T[i].v2[2]);
+				glColor3f(Clr[i*3+2].color[0],Clr[i*3+2].color[1],Clr[i*3+2].color[2]);
+				glVertex3f(T[i].v3[0],T[i].v3[1],T[i].v3[2]);
+				glEnd();
+				
+				myfile << T[i].v1[0] << " " << T[i].v1[1] << " " << T[i].v1[2] << " " << (int)Clr[i*3].color[0]*255 << " " << (int)Clr[i*3].color[1]*255 << " " << (int)Clr[i*3].color[2]*255 << "\n";
+				myfile << T[i].v2[0] << " " << T[i].v2[1] << " " << T[i].v2[2] << " " << (int)Clr[i*3+1].color[0]*255 << " " << (int)Clr[i*3+1].color[1]*255 << " " << (int)Clr[i*3+1].color[2]*255 << "\n";
+				myfile << T[i].v3[0] << " " << T[i].v3[1] << " " << T[i].v3[2] << " " << (int)Clr[i*3+2].color[0]*255 << " " << (int)Clr[i*3+2].color[1]*255 << " " << (int)Clr[i*3+2].color[2]*255 << "\n";
+			}
+		}
+		myfile.close();
+}
+
+#endif

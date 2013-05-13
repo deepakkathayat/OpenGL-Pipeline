@@ -1,0 +1,8 @@
+Assignment 3
+~~~~~~~~~~~~~~~~~~~~~~~~~
+-> sgl.h is the Header File
+-> sglShow() creates a ply file for the triangles
+
+-> How to run:
+->> The makefile compiles the code. Type 'make' on the terminal
+->> Now type './main' (on terminal) to run the executable

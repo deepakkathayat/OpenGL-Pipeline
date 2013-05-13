@@ -1,0 +1,20 @@
+ply
+format ascii 1.0
+comment made by Deepak Kathayat
+comment this file is a Triangle
+element vertex 6
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+element face 0
+property list float vertex_indices
+end_header
+0 0.15 -0.97 255 0 0
+-0.15 -0.15 -0.97 0 255 0
+0.15 -0.15 -0.97 0 0 255
+0.6 0.15 -0.97 255 0 255
+-0.6 0.15 -0.97 0 255 0
+0 -0.6 -0.97 0 0 0
